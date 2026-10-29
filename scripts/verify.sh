@@ -12,7 +12,16 @@ echo "== check 1/3: editable install"
 python3 -m pip install -q -e ".[dev]" || fail "install"
 
 echo "== check 2/4: version consistency (pyproject vs module)"
-pv=$(python3 -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+pv=$(python3 - <<'PY'
+import pathlib, re
+try:
+    import tomllib
+    print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])
+except ModuleNotFoundError:                     # Python 3.9/3.10 have no tomllib
+    text = pathlib.Path("pyproject.toml").read_text()
+    print(re.search(r'(?m)^version\s*=\s*"([^"]+)"', text).group(1))
+PY
+)
 mv=$(python3 -c "import migsafe;print(migsafe.__version__)")
 [ "$pv" = "$mv" ] || { echo "pyproject says $pv, module says $mv"; fail "version drift"; }
 echo "version $pv consistent"
