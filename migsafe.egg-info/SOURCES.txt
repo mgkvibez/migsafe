@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+migsafe/__init__.py
+migsafe/cli.py
+migsafe/parse.py
+migsafe/rules.py
+migsafe.egg-info/PKG-INFO
+migsafe.egg-info/SOURCES.txt
+migsafe.egg-info/dependency_links.txt
+migsafe.egg-info/entry_points.txt
+migsafe.egg-info/requires.txt
+migsafe.egg-info/top_level.txt
+tests/test_migsafe.py

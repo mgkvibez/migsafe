@@ -1,0 +1,2 @@
+[console_scripts]
+migsafe = migsafe.cli:main

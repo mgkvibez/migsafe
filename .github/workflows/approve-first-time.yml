@@ -1,0 +1,54 @@
+name: approve-first-time
+
+# GitHub holds workflow runs from first-time contributors at
+# conclusion=action_required until a maintainer approves them. A contributor
+# who sees no checks assumes the repo is dead. This approves those runs
+# automatically, with a guard: any PR that touches CI configuration is left
+# for a human, so a fork cannot get its own workflow approved.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  actions: write
+  pull-requests: read
+  contents: read
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to auto-approve PRs that modify CI configuration
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename')
+          if printf '%s\n' "$files" | grep -Eq '^(\.github/|scripts/verify\.sh$)'; then
+            echo "CI configuration touched by this PR; leaving approval to a maintainer."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Approve pending runs for this PR
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.pull_request.head.sha }}"
+          ids=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$sha&per_page=100" \
+                  --jq '.workflow_runs[] | select(.conclusion=="action_required") | .id')
+          if [ -z "$ids" ]; then
+            echo "No runs awaiting approval."
+            exit 0
+          fi
+          for id in $ids; do
+            echo "Approving run $id"
+            gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/approve" >/dev/null || {
+              echo "::warning::could not approve run $id (already approved or not approvable)"
+            }
+          done

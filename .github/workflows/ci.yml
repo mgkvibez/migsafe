@@ -17,7 +17,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -e ".[dev]"
-      - run: python -m pytest -q
+      - name: Release gate (install, tests, CLI smoke)
+        run: bash scripts/verify.sh
       - name: Self-check a dangerous migration
         run: |
           printf "SET lock_timeout='1s';\nALTER TABLE users ADD COLUMN a timestamptz DEFAULT now();\n" > /tmp/demo.sql
