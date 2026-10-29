@@ -4,6 +4,7 @@
 
 [![ci](https://github.com/mgkvibez/migsafe/actions/workflows/ci.yml/badge.svg)](https://github.com/mgkvibez/migsafe/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/migsafe-pg.svg)](https://pypi.org/project/migsafe-pg/)
 [![postgres](https://img.shields.io/badge/postgresql-12%2B-336791.svg)](https://www.postgresql.org/)
 [![stars](https://img.shields.io/github/stars/mgkvibez/migsafe?style=flat&color=yellow)](https://github.com/mgkvibez/migsafe/stargazers)
 
