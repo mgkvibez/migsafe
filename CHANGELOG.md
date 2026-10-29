@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.1 - 2026-10-29
+
+- First PyPI release as **migsafe-pg** (the bare name is taken by an unrelated
+  project). The command, import package and repository stay `migsafe`.
+- `migsafe check path` is now accepted as well as a bare path list.
+- Release pipeline via PyPI trusted publishing, plus first-time contributor
+  auto-approval.
 ## v0.1.0 - 2026-10-29
 
 - PyPI distribution name is `migsafe-pg` (the bare name `migsafe` is

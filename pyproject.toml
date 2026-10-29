@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "migsafe-pg"
-version = "0.1.0"
+version = "0.1.1"
 description = "Flag the PostgreSQL migration that would lock your users table before it ships."
 readme = "README.md"
 requires-python = ">=3.9"
