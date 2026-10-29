@@ -12,6 +12,14 @@
 ## Install
 
 ```bash
+pipx install git+https://github.com/mgkvibez/migsafe.git   # works today
+pipx install migsafe-pg                                    # once the PyPI release is live
+```
+
+The distribution is published to PyPI as `migsafe-pg` because the short name is
+already taken by an unrelated project. The command, the import package and the
+repo are all still `migsafe`. Zero runtime dependencies, Python 3.9+.
+bash
 pipx install git+https://github.com/mgkvibez/migsafe.git
 ```
 

@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "migsafe"
+name = "migsafe-pg"
 version = "0.1.0"
 description = "Flag the PostgreSQL migration that would lock your users table before it ships."
 readme = "README.md"

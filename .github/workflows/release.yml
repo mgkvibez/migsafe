@@ -1,0 +1,43 @@
+name: release
+
+# Publishes to PyPI via trusted publishing (OIDC): no API token is stored here.
+# One-time setup by the maintainer, per project at pypi.org/manage/account/publishing:
+#   PyPI Project Name: migsafe-pg
+#   Owner: mgkvibez
+#   Repository name: migsafe
+#   Workflow name: release.yml
+#   Environment: pypi
+# After that, pushing a v* tag publishes. The guard below refuses to publish when
+# the tag and the package version disagree, which otherwise fails as a duplicate
+# upload halfway through the job.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Tag must match the package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(python -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$tag" != "$version" ]; then
+            echo "tag $GITHUB_REF_NAME does not match pyproject version $version"; exit 1
+          fi
+          echo "tag and version agree: $version"
+      - uses: pypa/gh-action-pypi-publish@release/v1

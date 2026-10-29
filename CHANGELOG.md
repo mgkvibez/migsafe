@@ -2,6 +2,9 @@
 
 ## v0.1.0 - 2026-10-29
 
+- PyPI distribution name is `migsafe-pg` (the bare name `migsafe` is
+  taken by an unrelated project); command, import package and repo stay `migsafe`
+
 - `migsafe check migrations/*.sql` flags the PostgreSQL migration that would lock
   or rewrite a table in production, before it merges.
 - 14 rules across three severities. Critical: `drop-table`, `drop-column`,
