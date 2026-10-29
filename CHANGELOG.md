@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.2 - 2026-10-29
+
+- Fix the reported version: `--version` said 0.1.0 while the package was
+  0.1.1, because the module constant and the package metadata were bumped
+  separately. The release gate now fails when they disagree.
 ## v0.1.1 - 2026-10-29
 
 - First PyPI release as **migsafe-pg** (the bare name is taken by an unrelated
