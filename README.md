@@ -13,8 +13,7 @@
 ## Install
 
 ```bash
-pipx install git+https://github.com/mgkvibez/migsafe.git   # works today
-pipx install migsafe-pg                                    # once the PyPI release is live
+pipx install migsafe-pg
 ```
 
 The distribution is published to PyPI as `migsafe-pg` because the short name is
