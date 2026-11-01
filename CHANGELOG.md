@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- New rule `concurrent-index-in-transaction` (high): `CREATE INDEX CONCURRENTLY` inside an
+  explicit `BEGIN`/`START TRANSACTION` block, which Postgres rejects at runtime and which
+  aborts the whole migration. Contributed by @tondad80-dev in #3.
+  Transaction state is tracked per file in `check_files`, so a file that commits before the
+  index is not flagged, and state never leaks between files. `COMMIT AND CHAIN` keeps the
+  transaction open, `ROLLBACK TO SAVEPOINT` does not end it, and a `BEGIN` inside a
+  dollar-quoted function body, comment or string does not open one.
+
 ## v0.1.2 - 2026-10-29
 
 - Fix the reported version: `--version` said 0.1.0 while the package was

@@ -60,12 +60,15 @@ Splits the file into statements — dollar-quoted blocks, string literals and co
 | high | `volatile-default` | `DEFAULT now()` on `ADD COLUMN` rewrites the table |
 | high | `add-not-null-column` | `NOT NULL` with no default fails on non-empty tables |
 | high | `index-not-concurrent` | `CREATE INDEX` blocks writes for the whole build |
+| high | `concurrent-index-in-transaction` | `CREATE INDEX CONCURRENTLY` is a runtime error inside a transaction block, so the migration aborts |
 | high | `alter-column-type` | type changes rewrite the table and drop dependent indexes |
 | high | `constraint-without-not-valid` | adding a FK or CHECK validates every row under a lock |
 | medium | `unbatched-backfill`, `multiple-alter-ops`, `rename`, `set-not-null`, `no-timeout` | slower failure modes and lock pile-ups |
 
 It knows what the same file creates: an index on a table you are creating in this migration is not
-flagged, because there is nothing to lock yet.
+flagged, because there is nothing to lock yet. That exemption applies to `index-not-concurrent`
+only. `concurrent-index-in-transaction` ignores it, because `CONCURRENTLY` inside a transaction
+block fails at any table age.
 
 Every finding carries the statement line and a fix you can paste.
 
