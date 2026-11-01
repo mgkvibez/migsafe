@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 - 2026-11-01
 
 - New rule `concurrent-index-in-transaction` (high): `CREATE INDEX CONCURRENTLY` inside an
   explicit `BEGIN`/`START TRANSACTION` block, which Postgres rejects at runtime and which
