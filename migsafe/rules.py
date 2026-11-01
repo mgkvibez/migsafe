@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from . import __version__
+
 import re
 from dataclasses import dataclass, field
 
@@ -249,7 +251,7 @@ def to_text(report: Report) -> str:
     """Human-readable report."""
     if not report.findings:
         return (
-            f"No issues found by migsafe v0.1 across {report.statements} statements "
+            f"No issues found by migsafe v{__version__} across {report.statements} statements "
             f"in {len(report.files)} file(s).\n"
             "That means no known dangerous shape matched; it is not a guarantee."
         )

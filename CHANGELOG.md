@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.1 - 2026-11-01
+
+- Fix the clean-run summary, which still printed "migsafe v0.1" after three releases. The
+  gate compared pyproject against `--version` but never checked rendered text, so this drift
+  was invisible to it. The summary now reads the package version and a test asserts it.
+
 ## v0.2.0 - 2026-11-01
 
 - New rule `concurrent-index-in-transaction` (high): `CREATE INDEX CONCURRENTLY` inside an

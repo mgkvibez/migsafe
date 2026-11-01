@@ -207,3 +207,13 @@ COMMIT;
         ("concurrent-index-in-transaction", "high", 3),
         ("concurrent-index-in-transaction", "high", 4),
     ]
+
+
+def test_clean_summary_names_the_installed_version():
+    """Guards the drift where --version said 0.2.0 and the report said v0.1."""
+    from migsafe import __version__
+    from migsafe.rules import check_sql, to_text
+
+    # a timeout must be set, or no-timeout fires and the clean branch is never reached
+    text = to_text(check_sql("SET lock_timeout = '3s'; SET statement_timeout = '30s'; SELECT 1;"))
+    assert "migsafe v%s" % __version__ in text
