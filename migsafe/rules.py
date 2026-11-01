@@ -20,6 +20,7 @@ CREATE_INDEX_RE = re.compile(
     r"ON\s+(?:ONLY\s+)?([\w.\"]+)",
     re.IGNORECASE,
 )
+CONCURRENT_INDEX_RE = re.compile(r"^CREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY\b", re.IGNORECASE)
 TIMEOUT_RE = re.compile(r"(STATEMENT_TIMEOUT|LOCK_TIMEOUT)", re.IGNORECASE)
 
 
@@ -215,8 +216,24 @@ def check_files(files: dict[str, str]) -> Report:
 
     for name, statements in all_statements.items():
         sql = files[name]
+        in_transaction = False
         for statement in statements:
             report.findings.extend(check_statement(statement, new_tables))
+            upper = statement.upper
+            if re.match(r"^(BEGIN|START\s+TRANSACTION)\b", upper):
+                in_transaction = True
+            elif re.match(r"^(COMMIT|ROLLBACK|END|ABORT)\b", upper):
+                # A savepoint rollback does not end the surrounding transaction.
+                if not re.match(r"^ROLLBACK(?:\s+(?:WORK|TRANSACTION))?\s+TO\b", upper):
+                    in_transaction = in_transaction and bool(re.search(r"\bAND\s+CHAIN$", upper))
+
+            if in_transaction and CONCURRENT_INDEX_RE.match(statement.text):
+                report.findings.append(Finding(
+                    rule="concurrent-index-in-transaction", severity="high", line=statement.line,
+                    message="CREATE INDEX CONCURRENTLY fails inside a transaction block, aborting the migration",
+                    fix="Run this index statement alone, outside a transaction block",
+                    statement=statement.text,
+                ))
         if statements and not TIMEOUT_RE.search(sql):
             report.findings.append(Finding(
                 rule="no-timeout", severity="medium", line=1,

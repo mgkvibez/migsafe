@@ -1,7 +1,9 @@
 """Tests for migsafe rules."""
 
+import pytest
+
 from migsafe.parse import split_statements
-from migsafe.rules import check_sql
+from migsafe.rules import check_files, check_sql
 
 
 def rules_for(sql: str) -> set[str]:
@@ -97,3 +99,111 @@ def test_report_counts_and_ordering():
     assert lines == sorted(lines)
     assert report.counts()["critical"] == 1
     assert report.worst == "critical"
+
+
+@pytest.mark.parametrize("begin", ["BEGIN", "BEGIN WORK", "BEGIN TRANSACTION", "START TRANSACTION", "start transaction"])
+@pytest.mark.parametrize("index", ["CREATE INDEX CONCURRENTLY", "CREATE UNIQUE INDEX CONCURRENTLY"])
+def test_concurrent_index_in_transaction_is_high_at_statement_line(begin, index):
+    sql = f"SET lock_timeout='3s';\n{begin};\n{index} idx ON users (email);\nCOMMIT;"
+    findings = check_sql(sql).findings
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.rule == "concurrent-index-in-transaction"
+    assert finding.severity == "high"
+    assert finding.line == 3
+    assert finding.statement == f"{index} idx ON users (email)"
+    assert "transaction" in finding.message.lower()
+    assert "transaction" in finding.fix.lower()
+    assert "outside" in finding.fix.lower()
+
+
+@pytest.mark.parametrize("end", [
+    "COMMIT", "COMMIT WORK", "COMMIT TRANSACTION", "ROLLBACK", "ROLLBACK WORK",
+    "ROLLBACK TRANSACTION", "END", "ABORT", "COMMIT AND NO CHAIN", "ROLLBACK AND NO CHAIN",
+])
+def test_concurrent_index_after_transaction_end_is_not_flagged(end):
+    sql = f"SET lock_timeout='3s';\nBEGIN;\nSELECT 1;\n{end};\nCREATE INDEX CONCURRENTLY idx ON users (email);"
+    assert "concurrent-index-in-transaction" not in rules_for(sql)
+
+
+def test_concurrent_index_without_transaction_is_not_flagged():
+    sql = "SET lock_timeout='3s';\nCREATE INDEX CONCURRENTLY idx ON users (email);"
+    assert check_sql(sql).findings == []
+
+
+@pytest.mark.parametrize("prefix", [
+    "CREATE FUNCTION f() RETURNS void AS $$ BEGIN PERFORM 1; END $$ LANGUAGE plpgsql;",
+    "CREATE FUNCTION f() RETURNS void AS $body$ BEGIN PERFORM 1; END $body$ LANGUAGE plpgsql;",
+    "-- BEGIN;\n/* START TRANSACTION; */",
+    "SELECT 'BEGIN; START TRANSACTION;';",
+])
+def test_begin_in_body_comment_or_literal_does_not_open_transaction(prefix):
+    sql = f"SET lock_timeout='3s';\n{prefix}\nCREATE INDEX CONCURRENTLY idx ON users (email);"
+    assert "concurrent-index-in-transaction" not in rules_for(sql)
+
+
+def test_concurrent_index_on_new_table_in_transaction_is_still_flagged():
+    sql = """SET lock_timeout='3s';
+BEGIN;
+CREATE TABLE audit (id int);
+CREATE INDEX CONCURRENTLY idx ON audit (id);
+COMMIT;
+"""
+    findings = check_sql(sql).findings
+    assert [(f.rule, f.severity, f.line) for f in findings] == [
+        ("concurrent-index-in-transaction", "high", 4)
+    ]
+
+
+def test_transaction_state_is_not_shared_between_files():
+    report = check_files({
+        "first.sql": "SET lock_timeout='3s'; BEGIN;",
+        "second.sql": "SET lock_timeout='3s'; CREATE INDEX CONCURRENTLY idx ON users (email);",
+    })
+    assert "concurrent-index-in-transaction" not in {f.rule for f in report.findings}
+
+
+@pytest.mark.parametrize("rollback", [
+    "ROLLBACK TO before_index", "ROLLBACK TO SAVEPOINT before_index",
+    "ROLLBACK WORK TO SAVEPOINT before_index", "ROLLBACK TRANSACTION TO SAVEPOINT before_index",
+])
+def test_rollback_to_savepoint_keeps_transaction_active(rollback):
+    sql = f"SET lock_timeout='3s';\nBEGIN;\nSAVEPOINT before_index;\n{rollback};\nCREATE INDEX CONCURRENTLY idx ON users (email);\nCOMMIT;"
+    findings = check_sql(sql).findings
+    assert [(f.rule, f.severity, f.line) for f in findings] == [
+        ("concurrent-index-in-transaction", "high", 5)
+    ]
+
+
+@pytest.mark.parametrize("end", [
+    "COMMIT AND CHAIN", "ROLLBACK AND CHAIN", "COMMIT WORK AND CHAIN", "ROLLBACK TRANSACTION AND CHAIN",
+])
+def test_chained_transaction_still_flags_concurrent_index(end):
+    sql = f"SET lock_timeout='3s';\nBEGIN;\nSELECT 1;\n{end};\nCREATE INDEX CONCURRENTLY idx ON users (email);\nCOMMIT;"
+    findings = check_sql(sql).findings
+    assert [(f.rule, f.severity, f.line) for f in findings] == [
+        ("concurrent-index-in-transaction", "high", 5)
+    ]
+
+
+@pytest.mark.parametrize("statement", [
+    'CREATE INDEX "CONCURRENTLY" ON users (email)',
+    "SELECT 'CREATE INDEX CONCURRENTLY idx ON users (email)'",
+])
+def test_concurrently_in_identifier_or_literal_is_not_index_option(statement):
+    sql = f"SET lock_timeout='3s';\nBEGIN;\n{statement};\nCOMMIT;"
+    assert "concurrent-index-in-transaction" not in rules_for(sql)
+
+
+def test_each_concurrent_index_in_transaction_has_its_own_finding():
+    sql = """SET lock_timeout='3s';
+BEGIN;
+CREATE INDEX CONCURRENTLY email_idx ON users (email);
+CREATE INDEX CONCURRENTLY name_idx ON users (name);
+COMMIT;
+"""
+    findings = check_sql(sql).findings
+    assert [(f.rule, f.severity, f.line) for f in findings] == [
+        ("concurrent-index-in-transaction", "high", 3),
+        ("concurrent-index-in-transaction", "high", 4),
+    ]
